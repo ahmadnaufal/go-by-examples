@@ -15,7 +15,7 @@ const (
 type TokenBucket struct {
 	currentBucketSize int
 	// should be in nanoseconds
-	lastRefillTimestamp int
+	lastRefillTimestamp time.Time
 }
 
 func min(a, b int) int {
@@ -27,9 +27,11 @@ func min(a, b int) int {
 }
 
 func (tb *TokenBucket) refill() {
-	nowTime := time.Now().Nanosecond()
+	nowTime := time.Now()
 
-	tokensToAdd := ((nowTime - tb.lastRefillTimestamp) * RefillRate) / (1e9 * RefillDuration)
+	dur := nowTime.Sub(tb.lastRefillTimestamp)
+
+	tokensToAdd := (int(dur.Seconds()) / RefillDuration) * RefillRate
 	tb.currentBucketSize = min(tb.currentBucketSize+tokensToAdd, MaxBucketSize)
 	tb.lastRefillTimestamp = nowTime
 }
@@ -46,10 +48,12 @@ func (tb *TokenBucket) GrantRequest() bool {
 }
 
 func main() {
-	tb := TokenBucket{3, 0}
+	tb := TokenBucket{
+		currentBucketSize: 3,
+	}
 
 	for i := 0; i < 100; i++ {
 		fmt.Printf("Request %d: %v\n", i+1, tb.GrantRequest())
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 }
